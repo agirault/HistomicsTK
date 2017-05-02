@@ -2,6 +2,7 @@ import _ from 'underscore';
 
 import eventStream from 'girder/utilities/EventStream';
 import Panel from 'girder_plugins/slicer_cli_web/views/Panel';
+import saveAnnotation from '../dialogs/saveAnnotation';
 
 import annotationSelectorWidget from '../templates/panels/annotationSelector.pug';
 import '../stylesheets/panels/annotationSelector.styl';
@@ -13,7 +14,8 @@ import '../stylesheets/panels/annotationSelector.styl';
 var AnnotationSelector = Panel.extend({
     events: _.extend(Panel.prototype.events, {
         'click .h-toggle-annotation': 'toggleAnnotation',
-        'click .h-delete-annotation': 'deleteAnnotation'
+        'click .h-delete-annotation': 'deleteAnnotation',
+        'click .h-annotation-name': 'editAnnotation'
     }),
 
     /**
@@ -109,6 +111,16 @@ var AnnotationSelector = Panel.extend({
             this.collection.remove(model);
             model.destroy();
         }
+    },
+
+    /**
+     * Open a modal dialog allowing the user to edit the annotation name
+     * and description.
+     */
+    editAnnotation(evt) {
+        var id = $(evt.currentTarget).parents('.h-annotation').data('id');
+        var model = this.collection.get(id);
+        saveAnnotation(model, 'Edit annotation');
     },
 
     _onJobUpdate(evt) {

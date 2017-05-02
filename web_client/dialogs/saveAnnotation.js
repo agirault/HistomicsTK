@@ -1,4 +1,7 @@
+import _ from 'underscore';
+
 import View from 'girder/views/View';
+import { restRequest } from 'girder/rest';
 
 import saveAnnotation from '../templates/dialogs/saveAnnotation.pug';
 
@@ -15,7 +18,8 @@ var SaveAnnotation = View.extend({
     render() {
         this.$el.html(
             saveAnnotation({
-                annotation: this.annotation.toJSON()
+                annotation: this.annotation.toJSON().annotation || {},
+                titleText: this.titleText
             })
         ).girderModal(this);
     },
@@ -39,8 +43,29 @@ var SaveAnnotation = View.extend({
             name: this.$('#h-annotation-name').val(),
             description: this.$('#h-annotation-description').val()
         });
-        this.annotation.trigger('g:save');
         this.$el.modal('hide');
+
+        var path = `annotation/${this.annotation.id}`;
+        var data = this.annotation.toJSON();
+        var method = 'PUT';
+        if (this.annotation.isNew()) {
+            method = 'POST';
+            path = `annotation?itemId=${this.image.id}`;
+
+            data.elements = data.annotation.elements;
+        }
+        data = _.pick(data, ['name', 'description', 'attributes', 'elements']);
+        return restRequest({
+            path: path,
+            contentType: 'application/json',
+            processData: false,
+            data: JSON.stringify(data),
+            type: method
+        }).then((data) => {
+            this.annotation.set(data);
+            this.annotation.trigger('g:save', data);
+            return data;
+        });
     }
 });
 
@@ -57,10 +82,14 @@ var dialog = new SaveAnnotation({
  * `AnnotationModel` to respond to user submission of the form.
  *
  * @param {AnnotationModel} annotationElement The element to edit
+ * @param {ItemModel} [image] The image containing the annotation
+ * @param {string} [titleText='Save annotation'] Override the default modal title
  * @returns {SaveAnnotation} The dialog's view
  */
-function show(annotation) {
+function show(annotation, image, titleText) {
+    dialog.image = image;
     dialog.annotation = annotation;
+    dialog.titleText = titleText || 'Save annotation';
     dialog.setElement('#g-dialog-container').render();
     return dialog;
 }
